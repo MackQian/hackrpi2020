@@ -37,7 +37,7 @@ class World:
     left = 2
     right = 3
     stay = 4
-    def __init__(self, size, workList,foodList,homeList,startFood,startMoney,inf_,death_,salary_,buyFood_,price_,hunger_):
+    def __init__(self, size, workList,foodList,homeList,startFood,startMoney,inf_,death_,salary_,buyFood_,price_,hunger_, rewardFood_, rewardLive_,rewardDeath_,rewardInfect_,rewardWork_,rewardCrowd_):
         self.size=size
         self.lboard=np.zeros((size,size))
         self.pboardInit=np.zeros((size,size))
@@ -54,6 +54,12 @@ class World:
         self.food=buyFood_
         self.price=price_
         self.hunger=hunger_
+        self.rewardFood=rewardFood_
+        self.rewardLive=rewardLive_
+        self.rewardDeath=rewardDeath_
+        self.rewardInfect=rewardInfect_
+        self.rewardWork=rewardWork_
+        self.rewardCrowd=rewardCrowd_
         for i in range(size):
             temp=[]
             for _ in range(size):
@@ -131,9 +137,9 @@ class World:
                 self.pList[x].gottenWork=False
                 if self.pList[x].inf and np.random.random_sample()<self.death:
                     kill.append(x)
-                    rewards.append(-100)
+                    rewards.append(self.rewardDeath)
                 else:
-                    rewards.append(1)
+                    rewards.append(self.rewardLive)
         for x in kill:
             current=self.pList[x].getPos()
             self.pLoc[current[0]][current[1]].remove(x)
@@ -178,11 +184,13 @@ class World:
             if not self.pList[k].gottenWork and self.lboard[newPos[0]][newPos[1]]==1:
                 self.pList[k].addMoney(self.salary)
                 self.pList[k].gottenWork=True
-                rewards.append(1)
+                rewards.append(self.rewardWork)
             elif not self.pList[k].gottenFood and self.lboard[newPos[0]][newPos[1]]==2:
                 self.pList[k].addFood(self.food,self.price)
                 self.pList[k].gottenFood=True
-                rewards.append(1)
+                rewards.append(self.rewardFood)
+            else:
+                rewards.append(0)
         newInf=[]
         for i in self.infected:
             current=self.pList[i].getPos()
@@ -190,8 +198,13 @@ class World:
                 if not self.pList[key].inf and (np.random.random_sample()<self.inf):
                     self.pList[key].infect()
                     newInf.append(key)
-                    rewards[temp.index(k)]=-10
+                    rewards[temp.index(k)]=self.rewardInfect
         self.infected=self.infected+newInf
+        for i in range(self.size):
+            for j in range(self.size):
+                for k in self.pLoc[i][j]:
+                    if len(self.pLoc[i][j])>1 and rewards[temp.index(k)]>-10:
+                        rewards[temp.index(k)]=self.rewardCrowd
         return rewards
     def posUpdate(self,current,k,v,h):
         if current[0] + v >= self.size or current[0] + v < 0 or current[1] + h >= self.size or current[1] + h < 0:
@@ -213,21 +226,18 @@ def main():
     size=5
     startF=10
     startM=10
-    deathRate=0.01
+    deathRate=1
     infRate=1
     salary=10
     amount=5
     price=5
     food=[[1,1]]
-    home=[[3,3]]
-    #,[0,0],[3,2],[1,1],[5,5],[7,7],[9,9]]
+    home=[[3,3],[0,0],[3,2]]
     work=[[4,4]]
     hunger=2
-    world=World(size,work,food,home,startF,startM,infRate,deathRate,salary,amount,price, hunger)
+    rewardFood,rewardLive,rewardDeath,rewardInfect,rewardWork,rewardCrowd= 2, 1,-100,-10,1,-5
+    world=World(size,work,food,home,startF,startM,infRate,deathRate,salary,amount,price, hunger, rewardFood, rewardLive,rewardDeath,rewardInfect,rewardWork,rewardCrowd)
     world.infection(1)
-    #world.update(['r','l','s'])
-    #world.update(['d','s','s'])
-    #world.display()
     days = 100
     iterations_per_day = 4 * world.size
     agent = Agent()
@@ -266,7 +276,6 @@ def main():
     plt.ylabel('Reward')
     plt.xlabel('Actions Taken')
     plt.show()
-
 
 
 if __name__ == "__main__":
