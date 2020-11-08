@@ -254,7 +254,7 @@ def main():
             work.append(x)
         else:
             i -= 1
-    for i in range(30):
+    for i in range(5):
         x = [random.randint(0, size-1), random.randint(0, size-1)]
         if x not in food and x not in work:
             home.append(x)
@@ -327,6 +327,7 @@ def main():
                     reward_iter[j].append(0)
                     counter += 1
                 else:
+                    print(temp_reward, counter)
                     reward_iter[j].append(temp_reward[j-counter])
             for j in range(len(states)):
                 day_rewards[j].append(sum(reward_iter[j]))
@@ -339,15 +340,15 @@ def main():
                 agent.remember(states[j], actions[j], rewards[j], next_1, 1)
             if len(agent.memory) > agent.batch:
                 agent.learn()
-            print(time.time() - start)
+            #print(time.time() - start)
         world.reset()
         #world.display()
-        agent.q_network.save("model.h5")
+        #agent.q_network.save("model.h5")
 
-    np.save("all_reward", np.asarray(reward_iter))
-    np.save("avg_reward", np.asarray(avg_iter))
-    np.save("day_reward", np.asarray(day_rewards))
-    np.save("avg_day_reward", np.asarray(avg_day))
+    #np.save("all_reward", np.asarray(reward_iter))
+    #np.save("avg_reward", np.asarray(avg_iter))
+    #np.save("day_reward", np.asarray(day_rewards))
+    #np.save("avg_day_reward", np.asarray(avg_day))
 
     for i in range(len(home)):
         plt.plot(reward_iter[i], label="Person Number {}".format(i))
