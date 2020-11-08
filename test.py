@@ -45,6 +45,7 @@ class World:
         self.homeListInit=[x.copy() for x in homeList]
         self.pList={}
         self.infected=[]
+        self.infectedInit=[]
         self.startM=startMoney
         self.startF=startFood
         self.inf=inf_
@@ -117,6 +118,8 @@ class World:
         else:
             raise StopIteration
     def newDay(self):
+        kill=[]
+        rewards=[]
         for x in self.pList:
                 current=self.pList[x].getPos()
                 home=self.pList[x].getHome()
@@ -126,35 +129,40 @@ class World:
                 self.pList[x].hunger(self.hunger)
                 self.pList[x].gottenFood=False
                 self.pList[x].gottenWork=False
-        newInf=[]
-        for x in self.infected:
-            if self.pList[x].inf and np.random.random_sample()<self.death:
-                current=self.pList[x].getPos()
-                self.pLoc[current[0]][current[1]].remove(x)
-                del self.pList[x]
-            else:
-                newInf.append(x)
-        self.infected=newInf
+                if self.pList[x].inf and np.random.random_sample()<self.death:
+                    kill.append(x)
+                    rewards.append(-100)
+                else:
+                    rewards.append(1)
+        for x in kill:
+            current=self.pList[x].getPos()
+            self.pLoc[current[0]][current[1]].remove(x)
+            del self.pList[x]
+            self.infected.remove(x)
         self.pboard=[]
         for row in self.pLoc:
             temp=[]
             for col in row:
                 temp.append(len(col))
             self.pboard.append(temp)
+        return rewards
     def reset(self):
-        self.pList=[x.copy() for x in self.homeListInit]
-        self.homeList=[x.copy() for x in self.homeListInit]
-        self.foodList=[]
-        self.moneyList=[]
-        self.infected=[]
-        for _ in self.homeList:
-            self.foodList.append(self.startF)
-            self.moneyList.append(self.startM)
-            self.infected.append(False)
+        self.pLoc=[]
+        for i in range(self.size):
+            temp=[]
+            for _ in range(self.size):
+                temp.append([])
+            self.pLoc.append(temp)
+        self.pList={}
+        for i in range(len(self.homeListInit)):
+            self.pList[i]=Person(self.homeListInit[i],self.startF,self.startM)
+            self.pLoc[self.homeListInit[i][0]][self.homeListInit[i][1]].append(i)
         self.pboard=self.pboardInit.copy()
+        self.infected=self.infectedInit
     #move, infect update loop
     def update(self,actions):
         temp=[*self.pList]
+        rewards=[]
         for i in range(len(temp)):
             k=temp[i]
             current=self.pList[k].getPos()
@@ -170,9 +178,11 @@ class World:
             if not self.pList[k].gottenWork and self.lboard[newPos[0]][newPos[1]]==1:
                 self.pList[k].addMoney(self.salary)
                 self.pList[k].gottenWork=True
+                rewards.append(1)
             elif not self.pList[k].gottenFood and self.lboard[newPos[0]][newPos[1]]==2:
                 self.pList[k].addFood(self.food,self.price)
                 self.pList[k].gottenFood=True
+                rewards.append(1)
         newInf=[]
         for i in self.infected:
             current=self.pList[i].getPos()
@@ -180,10 +190,9 @@ class World:
                 if not self.pList[key].inf and (np.random.random_sample()<self.inf):
                     self.pList[key].infect()
                     newInf.append(key)
+                    rewards[temp.index(k)]=-10
         self.infected=self.infected+newInf
-        return [1 for _ in range(len(temp))]
-
-
+        return rewards
     def posUpdate(self,current,k,v,h):
         if current[0] + v >= self.size or current[0] + v < 0 or current[1] + h >= self.size or current[1] + h < 0:
             return
@@ -199,6 +208,7 @@ class World:
             if not self.pList[key].inf:
                 self.pList[key].infect()
                 self.infected.append(key)
+        self.infectedInit=self.infected.copy()
 def main():
     size=5
     startF=10
@@ -245,7 +255,7 @@ def main():
                     agent.remember(states[j], actions[j], rewards[j], next_states[j], 0)
                 if len(agent.memory) > agent.batch:
                     agent.learn()
-                
+
             world.newDay()
         world.reset()
         world.display()
@@ -256,8 +266,8 @@ def main():
     plt.ylabel('Reward')
     plt.xlabel('Actions Taken')
     plt.show()
-        
 
-        
+
+
 if __name__ == "__main__":
     main()
