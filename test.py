@@ -196,10 +196,11 @@ def main():
     salary=10
     amount=5
     price=5
+    hunger=2
     food=[[1,1]]
     home=[[3,3],[0,0],[3,2]]
     work=[[4,4]]
-    world=World(size,work,food,home,startF,startM,infRate,deathRate,salary,amount,price)
+    world=World(size,work,food,home,startF,startM,infRate,deathRate,salary,amount,price,hunger)
     world.infection(1)
     world.update(['r','s','s'])
     world.update(['d','s','s'])
