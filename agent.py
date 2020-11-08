@@ -11,7 +11,7 @@ tf.compat.v1.disable_eager_execution()
 class Agent(object):
     def __init__(self) -> None:
         self.action_space = 5
-        self.state_space = (3, 3, 2)
+        self.state_space = (3, 3, 3)
         #self.action_space = 2
         #self.state_space = 4
         self.q_network = self.make_net()
