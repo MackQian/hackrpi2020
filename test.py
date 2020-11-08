@@ -4,8 +4,7 @@ from agent import Agent
 from collections import deque
 import matplotlib.pyplot as plt
 import time
-
-
+import random
 class Person:
     def __init__(self, home,sfood,smoney):
         self.home=home
@@ -152,6 +151,7 @@ class World:
                 temp.append(len(col))
             self.pboard.append(temp)
         return rewards
+
     def reset(self):
         self.pLoc=[]
         for i in range(self.size):
@@ -165,6 +165,7 @@ class World:
             self.pLoc[self.homeListInit[i][0]][self.homeListInit[i][1]].append(i)
         self.pboard=self.pboardInit.copy()
         self.infected=self.infectedInit
+        
     #move, infect update loop
     def update(self,actions):
         temp=[*self.pList]
@@ -222,6 +223,8 @@ class World:
                 self.pList[key].infect()
                 self.infected.append(key)
         self.infectedInit=self.infected.copy()
+
+
 def main():
     size=5
     startF=10
@@ -233,20 +236,24 @@ def main():
     price=5
     food=[[1,1]]
     home=[[3,3],[0,0],[3,2]]
+    #,[1,1],[5,5],[7,7],[9,9]]
     work=[[4,4]]
     hunger=2
     rewardFood,rewardLive,rewardDeath,rewardInfect,rewardWork,rewardCrowd= 2, 1,-100,-10,1,-5
     world=World(size,work,food,home,startF,startM,infRate,deathRate,salary,amount,price, hunger, rewardFood, rewardLive,rewardDeath,rewardInfect,rewardWork,rewardCrowd)
     world.infection(1)
-    days = 100
-    iterations_per_day = 4 * world.size
+    days = 10
+    iterations_per_day = 3 * world.size
     agent = Agent()
-    iterations = 1
+    iterations = 2
     days = 2
-    reward_iter = [[] * len(home)]
-    best_avg_reward = -np.inf
+    reward_iter = [[] for _ in range(len(home))]
+    day_rewards = [[] for _ in range(len(home))]
+    avg_iter = []
+    avg_day = []
     for iter in range(iterations):
         for d in range(days):
+            print(iter, d)
             for i in range(iterations_per_day):
                 #world.display()
                 actions = []
@@ -259,24 +266,66 @@ def main():
                 next_states = []
                 for count, x in enumerate(world):
                     reward_iter[count].append(rewards[count])
+                    avg_iter.append(sum(reward_iter[count])/len(reward_iter[count]))
                     test = np.array([x[0], x[1], x[2]])
                     next_states.append(test)
                 for j in range(len(states)):
                     agent.remember(states[j], actions[j], rewards[j], next_states[j], 0)
                 if len(agent.memory) > agent.batch:
                     agent.learn()
-
-            world.newDay()
+            actions = []
+            states = []
+            for x in world:
+                test = np.array([x[0], x[1], x[2]])
+                states.append(test)
+                actions.append(agent.act(test))
+            rewards = world.newDay()
+            next_states = []
+            for count, x in enumerate(world):
+                reward_iter[count].append(rewards[count])
+                avg_iter.append(sum(reward_iter[count])/len(reward_iter[count]))
+                test = np.array([x[0], x[1], x[2]])
+                next_states.append(test)
+            for j in range(len(states)):
+                day_rewards[j].append(sum(reward_iter[j]))
+                avg_day.append(sum(day_rewards[j])/len(day_rewards[j]))
+                next_1 = 0
+                if j < len(next_states):
+                    next_1 = next_states[j]
+                else:
+                    next_1 = np.zeros(shape=(3,3,3))
+                agent.remember(states[j], actions[j], rewards[j], next_1, 1)
+            if len(agent.memory) > agent.batch:
+                agent.learn()
         world.reset()
         world.display()
 
     for i in range(len(home)):
         plt.plot(reward_iter[i], label="Person Number {}".format(i))
     plt.legend()
-    plt.ylabel('Reward')
+    plt.ylabel('Iteration Reward')
+    plt.xlabel('Actions Taken')
+    plt.show()
+    
+    plt.plot(avg_iter, label="Average Rewards")
+    plt.legend()
+    plt.ylabel('Iteration Reward')
     plt.xlabel('Actions Taken')
     plt.show()
 
+    for i in range(len(home)):
+        plt.plot(day_rewards[i], label="Person Number {}".format(i))
+    plt.legend()
+    plt.ylabel('Rewards')
+    plt.xlabel('Days')
+    plt.show()
+        
+    plt.plot(avg_day, label="Average Day Rewards")
+    plt.legend()
+    plt.ylabel("Rewards")
+    plt.xlabel("Days")
+    plt.show()
 
+        
 if __name__ == "__main__":
     main()
