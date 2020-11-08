@@ -164,8 +164,9 @@ class World:
             self.pList[i]=Person(self.homeListInit[i],self.startF,self.startM)
             self.pLoc[self.homeListInit[i][0]][self.homeListInit[i][1]].append(i)
         self.pboard=self.pboardInit.copy()
-        self.infected=self.infectedInit
-        
+        self.infected=self.infectedInit.copy()
+        for x in self.infected:
+            self.pList[x].inf=True
     #move, infect update loop
     def update(self,actions):
         temp=[*self.pList]
@@ -223,8 +224,6 @@ class World:
                 self.pList[key].infect()
                 self.infected.append(key)
         self.infectedInit=self.infected.copy()
-
-
 def main():
     size=5
     startF=10
@@ -306,7 +305,7 @@ def main():
     plt.ylabel('Iteration Reward')
     plt.xlabel('Actions Taken')
     plt.show()
-    
+
     plt.plot(avg_iter, label="Average Rewards")
     plt.legend()
     plt.ylabel('Iteration Reward')
@@ -319,13 +318,13 @@ def main():
     plt.ylabel('Rewards')
     plt.xlabel('Days')
     plt.show()
-        
+
     plt.plot(avg_day, label="Average Day Rewards")
     plt.legend()
     plt.ylabel("Rewards")
     plt.xlabel("Days")
     plt.show()
 
-        
+
 if __name__ == "__main__":
     main()
