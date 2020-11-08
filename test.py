@@ -6,6 +6,8 @@ class Person:
         self.food=sfood
         self.money=smoney
         self.inf=False
+        self.gottenFood=False
+        self.gottenWork=False
     def getPos(self):
         return self.pos.copy()
     def getHome(self):
@@ -23,12 +25,12 @@ class Person:
         self.inf=True
 class World:
     directions=[[-1,-1],[-1,0],[-1,1],[0,1],[1,1],[1,0],[1,-1],[0,-1]]
-    up='up'
-    down='down'
-    left='left'
-    right='right'
-    stay='stay'
-    def __init__(self, size, workList,foodList,homeList,startFood,startMoney,inf_,death_,salary_,buyFood_,price_):
+    up='u'
+    down='d'
+    left='l'
+    right='r'
+    stay='s'
+    def __init__(self, size, workList,foodList,homeList,startFood,startMoney,inf_,death_,salary_,buyFood_,price_,hunger_):
         self.size=size
         self.lboard=np.zeros((size,size))
         self.pboardInit=np.zeros((size,size))
@@ -43,6 +45,7 @@ class World:
         self.salary=salary_
         self.food=buyFood_
         self.price=price_
+        self.hunger=hunger_
         for i in range(size):
             temp=[]
             for j in range(size):
@@ -79,19 +82,22 @@ class World:
         print("pos: ",pos)
         stateLoc=np.zeros((3,3))
         statePeep=np.zeros((3,3))
+        stateRes=np.zeros((3,3))
         for d in self.directions:
             tempx=pos[0]+d[0]
             tempy=pos[1]+d[1]
             if (tempx>-1 and tempx<self.size) and (tempy>-1 and tempy<self.size):
                 stateLoc[d[0]+1][d[1]+1]=self.lboard[tempx][tempy]
-                if self.lboard[tempx][tempy]!=3:
-                    statePeep[d[0]+1][d[1]+1]=self.pboard[tempx][tempy]
+                #if self.lboard[tempx][tempy]!=3:
+                statePeep[d[0]+1][d[1]+1]=self.pboard[tempx][tempy]
             else:
                 stateLoc[d[0]+1][d[1]+1]=-1
                 statePeep[d[0]+1][d[1]+1]=-1
         stateLoc[1][1]=self.lboard[pos[0]][pos[1]]
         statePeep[1][1]= 0 if self.pboard[pos[0]][pos[1]]<2 else self.pboard[pos[0]][pos[1]]-1
-        return stateLoc,statePeep
+        stateRes[0][0]=self.pList[index].food
+        stateRes[0][1]=self.pList[index].money
+        return (stateLoc,statePeep,stateRes)
     def __iter__(self):
         self.keys=[*self.pList]
         self.pos=0;
@@ -110,6 +116,7 @@ class World:
                 self.pLoc[current[0]][current[1]].remove(x)
                 self.pLoc[home[0]][home[1]].append(x)
                 self.pList[x].setPos(home)
+                self.pList[x].hunger(self.hunger)
         newInf=[]
         for x in self.infected:
             if self.pList[x].inf and np.random.random_sample()<self.death:
@@ -151,10 +158,12 @@ class World:
             if actions[i]==self.right:
                 self.posUpdate(current,k,0,+1)
             newPos=self.pList[k].getPos()
-            if self.lboard[newPos[0]][newPos[1]]==1:
+            if not self.pList[k].gottenWork and self.lboard[newPos[0]][newPos[1]]==1:
                 self.pList[k].addMoney(self.salary)
-            elif self.lboard[newPos[0]][newPos[1]]==2:
+                self.pList[k].gottenWork=True
+            elif not self.pList[k].gottenFood and self.lboard[newPos[0]][newPos[1]]==2:
                 self.pList[k].addFood(self.food,self.price)
+                self.pList[k].gottenFood=True
         newInf=[]
         for i in self.infected:
             current=self.pList[i].getPos()
@@ -190,9 +199,8 @@ def main():
     work=[[4,4]]
     world=World(size,work,food,home,startF,startM,infRate,deathRate,salary,amount,price)
     world.infection(1)
-    world.update(['up','right','up'])
-    world.update(['left','stay','stay'])
-    world.update(['left','stay','stay'])
+    world.update(['r','s','s'])
+    world.update(['d','s','s'])
     world.display()
     for x in world:
         np.set_printoptions(threshold=10000)
@@ -200,5 +208,7 @@ def main():
         print(x[0])
         print("people array")
         print(x[1])
+        print("res array")
+        print(x[2])
 if __name__ == "__main__":
     main()
