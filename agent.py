@@ -18,6 +18,7 @@ class Agent(object):
         self.q_target = self.make_net()
         self.move_weights()
         self.memory = deque(maxlen=20000)
+        self.opt = tf.keras.optimizers.Adam()
         self.batch = 32
         # Q Learning Parameters
         self.gamma = 0.99
@@ -34,18 +35,18 @@ class Agent(object):
         inputs = tf.keras.layers.Input(shape=self.state_space)
         x = tf.keras.layers.Conv2D(64, (3,3), strides=1, activation='relu', name='conv1')(inputs)
         x = tf.keras.layers.Flatten()(x)
-        x = tf.keras.layers.Dense(512, activation='relu', name='dense1')(inputs)
+        #x = tf.keras.layers.Dense(512, activation='relu', name='dense1')(x)
         x =  tf.keras.layers.Dense(256, activation='relu', name='dense12')(x)
         value = tf.keras.layers.Dense(256, activation='relu', name='val1')(x)
-        value = tf.keras.layers.Dense(128, activation='relu', name='val2')(value)
+        #value = tf.keras.layers.Dense(128, activation='relu', name='val2')(value)
         value = tf.keras.layers.Dense(1, name='value_out')(value)
         action = tf.keras.layers.Dense(256, activation='relu', name='act1')(x)
         action = tf.keras.layers.Dense(256, activation='relu', name='act2')(action)
         action = tf.keras.layers.Dense(self.action_space, name='actout')(action)
-        out = value + (action - tf.math.reduce_mean(action, axis=1))
+        out = value + (action - tf.math.reduce_mean(action))
         model = tf.keras.models.Model(inputs=inputs, outputs=out)
         model.compile(optimizer=tf.keras.optimizers.Adam(), loss=tf.keras.losses.Huber())
-        model.summary()
+        #model.summary()
         return model
 
     def remember(self, state, action, reward, next_state, done):
@@ -75,6 +76,7 @@ class Agent(object):
             state = np.array([state,])
             next_state = np.array([next_state,])
             target_f = self.q_network.predict(state)[0]
+            #print(target_f)
             if done:
                 target_f[action] = reward
             else:
@@ -137,5 +139,14 @@ if __name__ == "__main__":
     plt.plot(avg_reward, color='red', label='Average')
     plt.legend()
     plt.ylabel('Reward')
-    plt.xlabel('Generation')
+    plt.xlabel('Iteration')
     plt.show()
+
+    
+
+
+    
+
+
+
+    
