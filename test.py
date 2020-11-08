@@ -1,45 +1,204 @@
 import numpy as np
-global iRate
-global price
-global food
-global work
+class Person:
+    def __init__(self, home,sfood,smoney):
+        self.home=home
+        self.pos=home.copy()
+        self.food=sfood
+        self.money=smoney
+        self.inf=False
+    def getPos(self):
+        return self.pos.copy()
+    def getHome(self):
+        return self.home.copy()
+    def setPos(self,pos):
+        self.pos=pos.copy()
+    def addFood(self,amount,price):
+        self.food+=amount
+        self.money-=price
+    def addMoney(self, amount):
+        self.money+=amount
+    def hunger(self,rate):
+        self.food-=rate
+    def infect(self):
+        self.inf=True
 class World:
     directions=[[-1,-1],[-1,0],[-1,1],[0,1],[1,1],[1,0],[1,-1],[0,-1]]
-    def __init__(self, size, foodList,homeList,workList):
+    up='up'
+    down='down'
+    left='left'
+    right='right'
+    stay='stay'
+    def __init__(self, size, workList,foodList,homeList,startFood,startMoney,inf_,death_,salary_,buyFood_,price_):
         self.size=size
-        self.lboardInit=np.zeros((size,size))
+        self.lboard=np.zeros((size,size))
         self.pboardInit=np.zeros((size,size))
-        self.plist=[x.copy() for x in homeList]
+        self.pLoc=[]
+        self.homeListInit=[x.copy() for x in homeList]
+        self.pList={}
+        self.infected=[]
+        self.startM=startMoney
+        self.startF=startFood
+        self.inf=inf_
+        self.death=death_
+        self.salary=salary_
+        self.food=buyFood_
+        self.price=price_
+        for i in range(size):
+            temp=[]
+            for j in range(size):
+                temp.append([])
+            self.pLoc.append(temp)
         for i in workList:
-            self.lboardInit[i[0]][i[1]]=1
+            self.lboard[i[0]][i[1]]=1
         for i in foodList:
-            self.lboardInit[i[0]][i[1]]=2
-        for i in homeList:
-            self.lboardInit[i[0]][i[1]]=3
-            self.pboardInit[i[0]][i[1]]=1
-        self.lboard=self.lboardInit.copy()
+            self.lboard[i[0]][i[1]]=2
+        for i in range(len(homeList)):
+            self.lboard[homeList[i][0]][homeList[i][1]]=3
+            self.pboardInit[homeList[i][0]][homeList[i][1]]=1
+            self.pList[i]=Person(homeList[i],self.startF,self.startM)
+            self.pLoc[homeList[i][0]][homeList[i][1]].append(i)
         self.pboard=self.pboardInit.copy()
+        self.keys=[]
+        self.pos=0
     def display(self):
-        pass
-    def getSingleState(self,pos):
+        np.set_printoptions(threshold=10000)
+        print("loc board")
+        for row in self.lboard:
+            print(row)
+        print("pNum board")
+        for row in self.pboard:
+            print(row)
+        print("people board")
+        for row in self.pLoc:
+            for col in row:
+                print(col,end='')
+            print()
+        print("infected: \n", self.infected)
+    def getSingleState(self,index):
+        pos=self.pList[index].pos
+        print("pos: ",pos)
         stateLoc=np.zeros((3,3))
         statePeep=np.zeros((3,3))
         for d in self.directions:
             tempx=pos[0]+d[0]
-            tempy=pos[1]+pos[1]
+            tempy=pos[1]+d[1]
             if (tempx>-1 and tempx<self.size) and (tempy>-1 and tempy<self.size):
-                stateLoc[d[0]][d[1]]=self.lboard[tempx][tempy]
-                statePeep[d[0]][d[1]]=self.pboard[tempx][tempy]
+                stateLoc[d[0]+1][d[1]+1]=self.lboard[tempx][tempy]
+                if self.lboard[tempx][tempy]!=3:
+                    statePeep[d[0]+1][d[1]+1]=self.pboard[tempx][tempy]
             else:
-                stateLoc[d[0]][d[1]]=-1
-                statePeep[d[0]][d[1]]=-1
+                stateLoc[d[0]+1][d[1]+1]=-1
+                statePeep[d[0]+1][d[1]+1]=-1
+        stateLoc[1][1]=self.lboard[pos[0]][pos[1]]
+        statePeep[1][1]= 0 if self.pboard[pos[0]][pos[1]]<2 else self.pboard[pos[0]][pos[1]]-1
         return stateLoc,statePeep
-    def getState(self):
-
-        for i in self.plist:
-            sLoc,pLoc=self.getSingleState(i);
+    def __iter__(self):
+        self.keys=[*self.pList]
+        self.pos=0;
+        return self
+    def __next__(self):
+        if(self.pos<len(self.keys)):
+            x=self.getSingleState(self.keys[self.pos])
+            self.pos+=1
+            return x
+        else:
+            raise StopIteration
+    def newDay(self):
+        for x in self.pList:
+                current=self.pList[x].getPos()
+                home=self.pList[x].getHome()
+                self.pLoc[current[0]][current[1]].remove(x)
+                self.pLoc[home[0]][home[1]].append(x)
+                self.pList[x].setPos(home)
+        newInf=[]
+        for x in self.infected:
+            if self.pList[x].inf and np.random.random_sample()<self.death:
+                current=self.pList[x].getPos()
+                self.pLoc[current[0]][current[1]].remove(x)
+                del self.pList[x]
+            else:
+                newInf.append(x)
+        self.infected=newInf
+        self.pboard=[]
+        for row in self.pLoc:
+            temp=[]
+            for col in row:
+                temp.append(len(col))
+            self.pboard.append(temp)
+    def reset(self):
+        self.pList=[x.copy() for x in self.homeListInit]
+        self.homeList=[x.copy() for x in self.homeListInit]
+        self.foodList=[]
+        self.moneyList=[]
+        self.infected=[]
+        for i in self.homeList:
+            self.foodList.append(self.startF)
+            self.moneyList.append(self.startM)
+            self.infected.append(False)
+        self.pboard=self.pboardInit.copy()
+    #move, infect update loop
+    def update(self,actions):
+        temp=[*self.pList]
+        for i in range(len(temp)):
+            k=temp[i]
+            current=self.pList[k].getPos()
+            if actions[i]==self.up:
+                self.posUpdate(current,k,-1,0)
+            if actions[i]==self.down:
+                self.posUpdate(current,k,1,0)
+            if actions[i]==self.left:
+                self.posUpdate(current,k,0,-1)
+            if actions[i]==self.right:
+                self.posUpdate(current,k,0,+1)
+            newPos=self.pList[k].getPos()
+            if self.lboard[newPos[0]][newPos[1]]==1:
+                self.pList[k].addMoney(self.salary)
+            elif self.lboard[newPos[0]][newPos[1]]==2:
+                self.pList[k].addFood(self.food,self.price)
+        newInf=[]
+        for i in self.infected:
+            current=self.pList[i].getPos()
+            for key in self.pLoc[current[0]][current[1]]:
+                if not self.pList[key].inf and (np.random.random_sample()<self.inf):
+                    self.pList[key].infect()
+                    newInf.append(key)
+        self.infected=self.infected+newInf
+    def posUpdate(self,current,k,v,h):
+        self.pboard[current[0]][current[1]]-=1
+        self.pboard[current[0]+v][current[1]+h]+=1
+        self.pList[k].setPos([current[0]+v,current[1]+h])
+        self.pLoc[current[0]][current[1]].remove(k)
+        self.pLoc[current[0]+v][current[1]+h].append(k)
+    def infection(self, num):
+        keys=[*self.pList]
+        while len(self.infected)<num:
+            key=np.random.choice(keys)
+            if not self.pList[key].inf:
+                self.pList[key].infect()
+                self.infected.append(key)
 def main():
-    iRate=0.01
-    price=10
+    size=5
+    startF=10
+    startM=10
+    deathRate=0.01
+    infRate=1
+    salary=10
+    amount=5
+    price=5
+    food=[[1,1]]
+    home=[[3,3],[0,0],[3,2]]
+    work=[[4,4]]
+    world=World(size,work,food,home,startF,startM,infRate,deathRate,salary,amount,price)
+    world.infection(1)
+    world.update(['up','right','up'])
+    world.update(['left','stay','stay'])
+    world.update(['left','stay','stay'])
+    world.display()
+    for x in world:
+        np.set_printoptions(threshold=10000)
+        print("loc array")
+        print(x[0])
+        print("people array")
+        print(x[1])
 if __name__ == "__main__":
     main()
