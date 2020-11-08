@@ -117,6 +117,8 @@ class World:
                 self.pLoc[home[0]][home[1]].append(x)
                 self.pList[x].setPos(home)
                 self.pList[x].hunger(self.hunger)
+                self.pList[x].gottenFood=False
+                self.pList[x].gottenWork=False
         newInf=[]
         for x in self.infected:
             if self.pList[x].inf and np.random.random_sample()<self.death:
