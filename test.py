@@ -236,7 +236,7 @@ class World:
 
 
 def main():
-    size = 100
+    size = 75
     startF=10
     startM=10
     deathRate=0.05
@@ -254,7 +254,7 @@ def main():
             work.append(x)
         else:
             i -= 1
-    for i in range(5):
+    for i in range(15):
         x = [random.randint(0, size-1), random.randint(0, size-1)]
         if x not in food and x not in work:
             home.append(x)
@@ -264,10 +264,10 @@ def main():
     rewardFood,rewardLive,rewardDeath,rewardInfect,rewardWork,rewardCrowd= 5, 1,-10,-1,10,-5
     world=World(size,work,food,home,startF,startM,infRate,deathRate,salary,amount,price, hunger, rewardFood, rewardLive,rewardDeath,rewardInfect,rewardWork,rewardCrowd)
     world.infection(2)
-    days = 100
+    days = 30
     iterations_per_day = int(1.2 * world.size)
     agent = Agent()
-    iterations = 10
+    iterations = 2
     reward_iter = [[] for _ in range(len(home))]
     dead = [i for i in range(len(home))]
     day_rewards = [[] for _ in range(len(home))]
@@ -288,6 +288,7 @@ def main():
                 rewards = world.update(actions)
                 next_states = []
                 temp_reward = [0 for i in range(len(rewards))]
+                reset = False
                 for count, x in enumerate(world):
                     #print(rewards, count)
                     temp_reward.append(rewards[count])
@@ -295,16 +296,21 @@ def main():
                     test = np.array([x[0], x[1], x[2]])
                     next_states.append(test)
                 counter = 0
-                for j in range(len(dead)):
-                    if dead[j] == -1:
-                        reward_iter[j].append(0)
-                        counter += 1
-                    else:
-                        reward_iter[j].append(temp_reward[j-counter])
+                if len(temp_reward) > 0:
+                    for j in range(len(dead)):
+                        if dead[j] == -1:
+                            reward_iter[j].append(0)
+                            counter += 1
+                        else:
+                            reward_iter[j].append(temp_reward[j-counter])
+                else: 
+                    reset = True
                 for j in range(len(states)):
                     agent.remember(states[j], actions[j], rewards[j], next_states[j], 0)
                 if len(agent.memory) > agent.batch:
                     agent.learn()
+                if reset:
+                    break
             actions = []
             states = []
             for x in world:
@@ -322,13 +328,16 @@ def main():
                 test = np.array([x[0], x[1], x[2]])
                 next_states.append(test)
             counter = 0
-            for j in range(len(dead)):
-                if dead[j] == -1:
-                    reward_iter[j].append(0)
-                    counter += 1
-                else:
-                    print(temp_reward, counter)
-                    reward_iter[j].append(temp_reward[j-counter])
+            reset = False
+            if len(temp_reward) > 0:
+                for j in range(len(dead)):
+                    if dead[j] == -1:
+                        reward_iter[j].append(0)
+                        counter += 1
+                    else:
+                        reward_iter[j].append(temp_reward[j-counter])
+            else:
+                reset = True
             for j in range(len(states)):
                 day_rewards[j].append(sum(reward_iter[j]))
                 avg_day.append(sum(day_rewards[j])/len(day_rewards[j]))
@@ -340,6 +349,9 @@ def main():
                 agent.remember(states[j], actions[j], rewards[j], next_1, 1)
             if len(agent.memory) > agent.batch:
                 agent.learn()
+            if reset:
+                world.reset()
+                break
             #print(time.time() - start)
         world.reset()
         #world.display()
