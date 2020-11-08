@@ -36,7 +36,7 @@ class Agent(object):
         inputs = tf.keras.layers.Input(shape=self.state_space)
         x = tf.keras.layers.Conv2D(64, (3,3), strides=1, activation='relu', name='conv1')(inputs)
         x = tf.keras.layers.Flatten()(x)
-        x = tf.keras.layers.Dense(512, activation='relu', name='dense1')(inputs)
+        x = tf.keras.layers.Dense(512, activation='relu', name='dense1')(x)
         value = tf.keras.layers.Dense(256, activation='relu', name='val1')(x)
         value = tf.keras.layers.Dense(1, name='value_out')(value)
         action = tf.keras.layers.Dense(256, activation='relu', name='act')(x)
