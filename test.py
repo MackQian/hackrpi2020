@@ -1,4 +1,11 @@
+from typing import Iterator
 import numpy as np
+from agent import Agent
+from collections import deque
+import matplotlib.pyplot as plt
+import time
+
+
 class Person:
     def __init__(self, home,sfood,smoney):
         self.home=home
@@ -25,11 +32,11 @@ class Person:
         self.inf=True
 class World:
     directions=[[-1,-1],[-1,0],[-1,1],[0,1],[1,1],[1,0],[1,-1],[0,-1]]
-    up='u'
-    down='d'
-    left='l'
-    right='r'
-    stay='s'
+    up = 0
+    down = 1
+    left = 2
+    right = 3
+    stay = 4
     def __init__(self, size, workList,foodList,homeList,startFood,startMoney,inf_,death_,salary_,buyFood_,price_,hunger_):
         self.size=size
         self.lboard=np.zeros((size,size))
@@ -48,7 +55,7 @@ class World:
         self.hunger=hunger_
         for i in range(size):
             temp=[]
-            for j in range(size):
+            for _ in range(size):
                 temp.append([])
             self.pLoc.append(temp)
         for i in workList:
@@ -79,7 +86,7 @@ class World:
         print("infected: \n", self.infected)
     def getSingleState(self,index):
         pos=self.pList[index].pos
-        print("pos: ",pos)
+        #print("pos: ",pos)
         stateLoc=np.zeros((3,3))
         statePeep=np.zeros((3,3))
         stateRes=np.zeros((3,3))
@@ -100,7 +107,7 @@ class World:
         return (stateLoc,statePeep,stateRes)
     def __iter__(self):
         self.keys=[*self.pList]
-        self.pos=0;
+        self.pos=0
         return self
     def __next__(self):
         if(self.pos<len(self.keys)):
@@ -140,7 +147,7 @@ class World:
         self.foodList=[]
         self.moneyList=[]
         self.infected=[]
-        for i in self.homeList:
+        for _ in self.homeList:
             self.foodList.append(self.startF)
             self.moneyList.append(self.startM)
             self.infected.append(False)
@@ -174,7 +181,12 @@ class World:
                     self.pList[key].infect()
                     newInf.append(key)
         self.infected=self.infected+newInf
+        return [1 for _ in range(len(temp))]
+
+
     def posUpdate(self,current,k,v,h):
+        if current[0] + v >= self.size or current[0] + v < 0 or current[1] + h >= self.size or current[1] + h < 0:
+            return
         self.pboard[current[0]][current[1]]-=1
         self.pboard[current[0]+v][current[1]+h]+=1
         self.pList[k].setPos([current[0]+v,current[1]+h])
@@ -196,22 +208,56 @@ def main():
     salary=10
     amount=5
     price=5
-    hunger=2
     food=[[1,1]]
-    home=[[3,3],[0,0],[3,2]]
+    home=[[3,3]]
+    #,[0,0],[3,2],[1,1],[5,5],[7,7],[9,9]]
     work=[[4,4]]
-    world=World(size,work,food,home,startF,startM,infRate,deathRate,salary,amount,price,hunger)
+    hunger=2
+    world=World(size,work,food,home,startF,startM,infRate,deathRate,salary,amount,price, hunger)
     world.infection(1)
-    world.update(['r','s','s'])
-    world.update(['d','s','s'])
-    world.display()
-    for x in world:
-        np.set_printoptions(threshold=10000)
-        print("loc array")
-        print(x[0])
-        print("people array")
-        print(x[1])
-        print("res array")
-        print(x[2])
+    #world.update(['r','l','s'])
+    #world.update(['d','s','s'])
+    #world.display()
+    days = 100
+    iterations_per_day = 4 * world.size
+    agent = Agent()
+    iterations = 1
+    days = 2
+    reward_iter = [[] * len(home)]
+    best_avg_reward = -np.inf
+    for iter in range(iterations):
+        for d in range(days):
+            for i in range(iterations_per_day):
+                #world.display()
+                actions = []
+                states = []
+                for x in world:
+                    test = np.array([x[0], x[1], x[2]])
+                    states.append(test)
+                    actions.append(agent.act(test))
+                rewards = world.update(actions)
+                next_states = []
+                for count, x in enumerate(world):
+                    reward_iter[count].append(rewards[count])
+                    test = np.array([x[0], x[1], x[2]])
+                    next_states.append(test)
+                for j in range(len(states)):
+                    agent.remember(states[j], actions[j], rewards[j], next_states[j], 0)
+                if len(agent.memory) > agent.batch:
+                    agent.learn()
+                
+            world.newDay()
+        world.reset()
+        world.display()
+
+    for i in range(len(home)):
+        plt.plot(reward_iter[i], label="Person Number {}".format(i))
+    plt.legend()
+    plt.ylabel('Reward')
+    plt.xlabel('Actions Taken')
+    plt.show()
+        
+
+        
 if __name__ == "__main__":
     main()
